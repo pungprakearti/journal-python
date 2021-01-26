@@ -21,51 +21,53 @@ KEY = ''
 PASSWORD = ''
 HASHED_PASSWORD = ''
 
-def get_password():
-    '''
-    Check if password already exists and if not,
-    create a new password for the journal.
-    If password exists, get password from user to verify
-    '''
+
+def create_password():
+    ''' Create main password to protect journal entries '''
 
     global KEY
     global PASSWORD
 
-    if(path.exists('./journal/secret')):
-        # Get password and assign to global
-        password = getpass.getpass('Please enter your password: ')
-        PASSWORD = password
-
-        if(password_verify()):
-            print('WE DID IT')
-
-            # Assign as global
-            KEY = format_to_16(PASSWORD)
-
-        else:
-            print('UNAUTHORIZED: PASSWORD INCORRECT')
-
-    else:
-        # Create Journal directory
+    # Create Journal directory
+    if(not path.exists('./journal')):
         os.mkdir('./journal')
 
-        # Get a new password
-        password = getpass.getpass('Please enter a new password: ')
-        confirm_password = getpass.getpass('Please confirm your password: ')
+    # Create a new password
+    password = getpass.getpass('Please enter a new password: ')
+    confirm_password = getpass.getpass('Please confirm your password: ')
 
-        if(password == confirm_password):
-            print('PASSWORD CONFIRMED')
+    if(password == confirm_password):
+        print('PASSWORD CONFIRMED')
 
-            # Save password locally
-            PASSWORD = password
-            save_password_local(password)
+        # Save password locally in secret and assign to global
+        PASSWORD = password
+        save_password_local(password)
 
-            # Assign as global
-            KEY = format_to_16(password)
+        # Assign as global
+        KEY = pad_string(PASSWORD, 'key')
 
-        else:
-            print('ERROR: THOSE PASSWORDS DO NOT MATCH\n')
-            get_password()
+    else:
+        print('ERROR: THOSE PASSWORDS DO NOT MATCH\n')
+        create_password()
+
+
+def get_password():
+    ''' Get password and verify '''
+
+    global KEY
+    global PASSWORD
+
+    # Get password and assign to global
+    password = getpass.getpass('Please enter your password: ')
+    PASSWORD = password
+
+    if(password_verify()):
+        # Assign as global
+        KEY = pad_string(PASSWORD, 'key')
+
+    else:
+        print('UNAUTHORIZED: PASSWORD INCORRECT')
+        exit()
 
 
 def save_password_local(password):
@@ -97,50 +99,38 @@ def password_verify():
         return False
 
 
-def create_journal():
-    ''' Create the initial journal, store the hashed password in it and encode '''
-
-    # Create main journal file
-    journal_header = encrypt(pad_message(HASHED_PASSWORD))
-    journal_file = open('./journal/journal', 'wb')
-    journal_file.write(journal_header)
-    journal_file.close()
-
-    # Create entries folder
-    os.mkdir('./journal/entries')
-
-    print('JOURNAL CREATED')
-
-
-def pad_message(message, empty_line = False):
+def pad_string(string, mode='entry'):
     '''
     Messages have to be multiples of 16 in order to encrypt
     Adds necessary padding to the message
     '''
 
-    if(empty_line):
-        padding = '                '[:(14 - (len(message) % 16))]
-        padded_message = message + padding + '\n\n'
+    # Key for encryption
+    if(mode == 'key'):
+        if(len(string) > 16):
+            formatted = string[:16]
+        else:
+            formatted = (string + '                ')[:16]
+
+    # Snippet for index
+    elif(mode == 'snippet'):
+        if(len(string) > 32):
+            formatted = string[:32]
+        else:
+            formatted = (string + '                                ')[:32]
+
+    # Journal entry
     else:
-        padding = '                '[:(15 - (len(message) % 16))]
-        padded_message = message + padding + '\n'
-
-    return padded_message
-
-
-def format_to_16(string):
-    ''' Format the string to 16 characters '''
-
-    if(len(string) > 16):
-        formatted = string[:16]
-    else:
-        formatted = (string + '                ')[:16]
+        padding = '                '[:(16 - (len(string) % 16))]
+        formatted = string + padding
 
     return formatted
 
 
 def encrypt(message):
     ''' Encrypt a message using AES '''
+
+    print(message, len(message))
 
     cipher_encrypt = AES.new(KEY, AES.MODE_CBC, IV)
     cipher_text = cipher_encrypt.encrypt(message)
@@ -154,13 +144,14 @@ def decrypt(message):
     cipher_decrypt = AES.new(KEY, AES.MODE_CBC, IV)
     decrypted_message = cipher_decrypt.decrypt(message)
 
-    print(decrypted_message.decode('utf-8'))
+    return decrypted_message.decode('utf-8')
 
-    return decrypted_message
-
-
+# NEED TO FIGURE OUT BETTER PADDING
+# LENGTH IS IN CORRECT WHEN TRYING TO ENCRYPT
 def create_entry():
     ''' Check for entry date and if file exists, add entry to it '''
+
+    get_password()
 
     today = date.today()
     filename = today.strftime('%Y%m%d')
@@ -168,24 +159,37 @@ def create_entry():
     now = datetime.now()
     current_time = now.strftime('%H:%M:%S')
 
+    # Get new entry
+    new_entry = input(f'{readable_date}: {current_time} - ')
+    new_entry = f'{readable_date}: {current_time} - ' + new_entry
 
-    if(path.exists(f'./journal/entries/{readable_date}')):
-        print('it exists')
-
+    # Read index and place new entry before old data
+    if(path.exists('./journal/index')):
+        index = open('./journal/index', 'rb')
+        old_entries = decrypt(index.read())
+        index.close()
     else:
-        # File doesn't exist so create new entry file with date header
-        current_entry = f'{readable_date}:\n{current_time} - '
-        new_entry = input(f'{current_time} - ')
-        current_entry += new_entry
+        old_entries = ''
 
-        # Encrypt entry
-        padded_entry = pad_message(current_entry, True)
-        encrypted_entry = encrypt(padded_entry)
-        
-        # Write to file
-        entry_file = open(f'./journal/entries/{filename}', 'wb')
-        entry_file.write(encrypted_entry)
-        entry_file.close()
+    new_entry_padded = pad_string(new_entry, 'snippet')
+    index_text = pad_string(new_entry + '\n' + old_entries)
+
+    index = open('./journal/index', 'wb')
+    index.write(encrypt(index_text))
+    index.close()
+
+    # Create entry file
+    '''
+    entry_file = open(f'./journal/entries/{filename}', 'rb')
+    old_entry_contents = entry_file.read()
+    entry_file.close()
+
+    entry_file = open(f'./journal/entries/{filename}', 'wb')
+    old_entry_contents = decrypt(old_entry_contents)
+    entry_to_write = pad_string(new_entry) + old_entry_contents
+    entry_file.write(encrypt(entry_to_write))
+    entry_file.close()
+    '''
 
 
 def print_help():
@@ -201,11 +205,16 @@ read <list number>      Display entry
 
 
 def list_entries():
-    print('list entries')
+    get_password()
+
+    index = open('./journal/index', 'rb')
+    index_contents = decrypt(index.read())
+    print('this is index: ', index_contents)
+    index.close()
 
 
 def read_entry(entry_number):
-    print('read entry')    
+    print('read entry')
 
 
 #################################################
@@ -219,6 +228,8 @@ def read_entry(entry_number):
 
 # Create entry
 # create_entry()
+
+
 
 options = {
     'help': print_help,
@@ -234,15 +245,19 @@ if(path.exists('./journal/secret')):
         print_help()
 
     if(len(sys.argv) == 2):
-        options[sys.argv[2]]
+        options[sys.argv[1]]()
 
 else:
     print('INITIALIZING JOURNAL')
-    get_password()
+    create_password()
 
 '''
 journal file
 first line is hash
 every line after that is path to files
 files organized by date 20210122
+
+save hashed password to verify because if we just encrypt with
+any password, if the password is different, if will be very difficult
+to retrieve your data
 '''
