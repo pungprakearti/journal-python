@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+# Change this to point to your venv and it can run without sourcing the venv
+# ex: #!/Users/<USER>/bin/journal/venv/bin/python3
 
 '''
-journal.py is a script that encrypt and decrypts journal entries
+journal.py is a script that encrypts and decrypts journal entries
+by: Andrew Pungprakearti
+https://github.com/pungprakearti
+https://www.linkedin.com/in/andrewpungprakearti/
+http://www.biscuitsinthebasket.com
 '''
 
 import getpass
@@ -19,6 +25,12 @@ KEY = ''
 PASSWORD = ''
 HASHED_PASSWORD = ''
 
+# Journal path for storing entries in one place and being able to call
+# the script from anywhere
+# ex: '/Users/<USER>/Documents' or '.'
+JOURNAL_PATH = '.'
+
+print(f'{JOURNAL_PATH}/journal')
 
 def out(mode, message):
     ''' Print messages in special colors '''
@@ -46,11 +58,11 @@ def create_password():
     global PASSWORD
 
     # Create Journal directories
-    if(not os.path.exists('./journal')):
-        os.mkdir('./journal')
+    if(not os.path.exists(f'{JOURNAL_PATH}/journal')):
+        os.mkdir(f'{JOURNAL_PATH}/journal')
 
-    if(not os.path.exists('./journal/entries')):
-        os.mkdir('./journal/entries')
+    if(not os.path.exists(f'{JOURNAL_PATH}/journal/entries')):
+        os.mkdir(f'{JOURNAL_PATH}/journal/entries')
 
     # Create a new password
     password = getpass.getpass('Please enter a new password: ')
@@ -100,7 +112,7 @@ def save_password_local(password):
     HASHED_PASSWORD = hashed_password.decode('utf-8')
 
     # save to binary file
-    secret_file = open('./journal/secret', 'wb')
+    secret_file = open(f'{JOURNAL_PATH}/journal/secret', 'wb')
     secret_file.write(hashed_password)
     secret_file.close()
 
@@ -111,7 +123,7 @@ def password_verify():
     ''' Reads secret file and check's hash against entered password '''
 
     # Read secret file
-    secret_file = open('./journal/secret', 'rb')
+    secret_file = open(f'{JOURNAL_PATH}/journal/secret', 'rb')
     local_hashed_password = secret_file.read()
 
     if(bcrypt.checkpw(PASSWORD.encode('utf-8'), local_hashed_password)):
@@ -182,8 +194,8 @@ def create_entry():
     new_entry = f'{readable_date}: {current_time} - ' + new_entry
 
     # Read index and place new entry before old data
-    if(os.path.exists('./journal/index')):
-        index = open('./journal/index', 'rb')
+    if(os.path.exists(f'{JOURNAL_PATH}/journal/index')):
+        index = open(f'{JOURNAL_PATH}/journal/index', 'rb')
         old_entries = decrypt(index.read())
         index.close()
     else:
@@ -192,12 +204,12 @@ def create_entry():
     new_entry_padded = pad_string(new_entry, 'snippet')
     index_text = pad_string(new_entry_padded + '\n' + old_entries)
 
-    index = open('./journal/index', 'wb')
+    index = open(f'{JOURNAL_PATH}/journal/index', 'wb')
     index.write(encrypt(index_text))
     index.close()
 
     # Create entry file
-    entry_file = open(f'./journal/entries/{filename}', 'wb')
+    entry_file = open(f'{JOURNAL_PATH}/journal/entries/{filename}', 'wb')
     entry_to_write = pad_string(new_entry)
     entry_file.write(encrypt(entry_to_write))
     entry_file.close()
@@ -214,7 +226,7 @@ def list_entries():
     get_password()
 
     # Read index file and list entries
-    index = open('./journal/index', 'rb')
+    index = open(f'{JOURNAL_PATH}/journal/index', 'rb')
     index_contents = decrypt(index.read())
     index.close()
     index_sections = index_contents.split('\n')
@@ -243,7 +255,7 @@ def read_entry(entry_number):
     ''' Use entry number to decrupt that entry in the entries folder '''
 
     # Get all entry files and sort them in reverse order
-    entries = os.listdir('./journal/entries')
+    entries = os.listdir(f'{JOURNAL_PATH}/journal/entries')
 
     if(len(entries) < 1):
         out('warn', 'ERROR: There are no entries')
@@ -252,7 +264,7 @@ def read_entry(entry_number):
     entries.sort(reverse=True)
 
     # Open, decrypt and print contents of entry
-    entry_file = open(f'./journal/entries/{entries[entry_number - 1]}', 'rb')
+    entry_file = open(f'{JOURNAL_PATH}/journal/entries/{entries[entry_number - 1]}', 'rb')
     entry = entry_file.read()
     entry_file.close()
     entry_decrypted = decrypt(entry)
@@ -285,7 +297,7 @@ options = {
     'read': read_entry
 }
 
-if(os.path.exists('./journal/secret')):
+if(os.path.exists(f'{JOURNAL_PATH}/journal/secret')):
     if(len(sys.argv) == 1):
         print_help()
 
