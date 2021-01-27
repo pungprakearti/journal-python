@@ -3,21 +3,19 @@ A password protected Python3 diary that encrypts your entries
 
 # Getting started
 ## Install Python3  
-`brew install python`
+Download it here: https://www.python.org/downloads/
 
 ## Install Pip
-`curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py`  
-
-`python get-pip.py`  
+`python3 -m ensurepip`
 
 ## Create Python virtual environment
-`python -m venv venv`
+`python3 -m venv venv`
 
 ## Activate venv
-`source venv/bin/activate`  
+`source venv/bin/activate`
 
 ## Install modules
-`pip install -r requirements.txt`  
+`pip3 install -r requirements.txt`
 
 ## Make the script executable
 `chmod a+x ./pyairy.py`  
