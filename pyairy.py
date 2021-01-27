@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Change this to point to your venv and it can run without sourcing the venv
-# ex: #!/Users/<USER>/bin/journal/venv/bin/python3
+# ex: #!/Users/<USER>/bin/pyairy/venv/bin/python3
 
 '''
-journal.py is a script that encrypts and decrypts journal entries
+pyairy.py is a script that encrypts and decrypts journal entries
 by: Andrew Pungprakearti
-https://github.com/pungprakearti
+https://github.com/pungprakearti/pyairy
 https://www.linkedin.com/in/andrewpungprakearti/
 http://www.biscuitsinthebasket.com
 '''
@@ -20,7 +20,7 @@ import sys
 
 
 # Globals
-IV = 'Python Journal!!'
+IV = 'Python Diary!!!!'
 KEY = ''
 PASSWORD = ''
 HASHED_PASSWORD = ''
@@ -28,7 +28,7 @@ HASHED_PASSWORD = ''
 # Journal path for storing entries in one place and being able to call
 # the script from anywhere
 # ex: '/Users/<USER>/Documents' or '.'
-JOURNAL_PATH = '.'
+DIR_PATH = '.'
 
 def out(mode, message):
     ''' Print messages in special colors '''
@@ -55,12 +55,12 @@ def create_password():
     global KEY
     global PASSWORD
 
-    # Create Journal directories
-    if(not os.path.exists(f'{JOURNAL_PATH}/journal')):
-        os.mkdir(f'{JOURNAL_PATH}/journal')
+    # Create pyairy directories
+    if(not os.path.exists(f'{DIR_PATH}/pyairy')):
+        os.mkdir(f'{DIR_PATH}/pyairy')
 
-    if(not os.path.exists(f'{JOURNAL_PATH}/journal/entries')):
-        os.mkdir(f'{JOURNAL_PATH}/journal/entries')
+    if(not os.path.exists(f'{DIR_PATH}/pyairy/entries')):
+        os.mkdir(f'{DIR_PATH}/pyairy/entries')
 
     # Create a new password
     password = getpass.getpass('Please enter a new password: ')
@@ -110,7 +110,7 @@ def save_password_local(password):
     HASHED_PASSWORD = hashed_password.decode('utf-8')
 
     # save to binary file
-    secret_file = open(f'{JOURNAL_PATH}/journal/secret', 'wb')
+    secret_file = open(f'{DIR_PATH}/pyairy/secret', 'wb')
     secret_file.write(hashed_password)
     secret_file.close()
 
@@ -118,10 +118,10 @@ def save_password_local(password):
 
 
 def password_verify():
-    ''' Reads secret file and check's hash against entered password '''
+    ''' Reads secret file and checks hash against entered password '''
 
     # Read secret file
-    secret_file = open(f'{JOURNAL_PATH}/journal/secret', 'rb')
+    secret_file = open(f'{DIR_PATH}/pyairy/secret', 'rb')
     local_hashed_password = secret_file.read()
 
     if(bcrypt.checkpw(PASSWORD.encode('utf-8'), local_hashed_password)):
@@ -150,7 +150,7 @@ def pad_string(string, mode='entry'):
         else:
             formatted = (string + '                                                                                                ')[:96]
 
-    # Journal entry
+    # Entry
     else:
         padding = '                '[:(16 - (len(string) % 16))]
         formatted = string + padding
@@ -192,8 +192,8 @@ def create_entry():
     new_entry = f'{readable_date}: {current_time} - ' + new_entry
 
     # Read index and place new entry before old data
-    if(os.path.exists(f'{JOURNAL_PATH}/journal/index')):
-        index = open(f'{JOURNAL_PATH}/journal/index', 'rb')
+    if(os.path.exists(f'{DIR_PATH}/pyairy/index')):
+        index = open(f'{DIR_PATH}/pyairy/index', 'rb')
         old_entries = decrypt(index.read())
         index.close()
     else:
@@ -202,12 +202,12 @@ def create_entry():
     new_entry_padded = pad_string(new_entry, 'snippet')
     index_text = pad_string(new_entry_padded + '\n' + old_entries)
 
-    index = open(f'{JOURNAL_PATH}/journal/index', 'wb')
+    index = open(f'{DIR_PATH}/pyairy/index', 'wb')
     index.write(encrypt(index_text))
     index.close()
 
     # Create entry file
-    entry_file = open(f'{JOURNAL_PATH}/journal/entries/{filename}', 'wb')
+    entry_file = open(f'{DIR_PATH}/pyairy/entries/{filename}', 'wb')
     entry_to_write = pad_string(new_entry)
     entry_file.write(encrypt(entry_to_write))
     entry_file.close()
@@ -224,7 +224,7 @@ def list_entries():
     get_password()
 
     # Read index file and list entries
-    index = open(f'{JOURNAL_PATH}/journal/index', 'rb')
+    index = open(f'{DIR_PATH}/pyairy/index', 'rb')
     index_contents = decrypt(index.read())
     index.close()
     index_sections = index_contents.split('\n')
@@ -236,7 +236,7 @@ def list_entries():
 
     choice = out('question', '\nPlease select an entry to read: ')
 
-    # convert choice to integer
+    # Convert choice to integer
     try:
         choice = int(choice)
     except ValueError:
@@ -253,7 +253,7 @@ def read_entry(entry_number):
     ''' Use entry number to decrupt that entry in the entries folder '''
 
     # Get all entry files and sort them in reverse order
-    entries = os.listdir(f'{JOURNAL_PATH}/journal/entries')
+    entries = os.listdir(f'{DIR_PATH}/pyairy/entries')
 
     if(len(entries) < 1):
         out('warn', 'ERROR: There are no entries')
@@ -262,7 +262,7 @@ def read_entry(entry_number):
     entries.sort(reverse=True)
 
     # Open, decrypt and print contents of entry
-    entry_file = open(f'{JOURNAL_PATH}/journal/entries/{entries[entry_number - 1]}', 'rb')
+    entry_file = open(f'{DIR_PATH}/pyairy/entries/{entries[entry_number - 1]}', 'rb')
     entry = entry_file.read()
     entry_file.close()
     entry_decrypted = decrypt(entry)
@@ -274,12 +274,12 @@ def read_entry(entry_number):
 def print_help():
     ''' Print the help dialog '''
 
-    print('''\n./journal.py <option>
+    print('''\n./pyairy.py <OPERATION>
 ------------------------------------------------------
-\033[95mhelp, h, ?\033[00m              Display this menu
-\033[95mcreate\033[00m                  Create a new journal entry
+\033[95mhelp, h, ?\033[00m              Display this menu\n
+\033[95mcreate\033[00m                  Create a new journal entry\n
 \033[95mlist\033[00m                    List all entries with snippets
-\033[95mread <list number>\033[00m      Display entry
+                        and display selected entry
 ''')
 
 
@@ -291,11 +291,10 @@ options = {
     'h': print_help,
     '?': print_help,
     'create': create_entry,
-    'list': list_entries,
-    'read': read_entry
+    'list': list_entries
 }
 
-if(os.path.exists(f'{JOURNAL_PATH}/journal/secret')):
+if(os.path.exists(f'{DIR_PATH}/pyairy/secret')):
     if(len(sys.argv) == 1):
         print_help()
 
