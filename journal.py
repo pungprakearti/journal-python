@@ -104,7 +104,7 @@ def save_password_local(password):
     secret_file.write(hashed_password)
     secret_file.close()
 
-    out('success', 'NEW PASSWORD SAVED')
+    out('success', '\nNEW PASSWORD SAVED')
 
 
 def password_verify():
