@@ -30,8 +30,6 @@ HASHED_PASSWORD = ''
 # ex: '/Users/<USER>/Documents' or '.'
 JOURNAL_PATH = '.'
 
-print(f'{JOURNAL_PATH}/journal')
-
 def out(mode, message):
     ''' Print messages in special colors '''
 
